@@ -10,7 +10,7 @@
  */
 
 #include <SPI.h>	/* Installed in default arduino IDE */
-//#include <Ethernet.h>  /* Installed in default arduino IDE */
+#include <Ethernet.h>  /* Installed in default arduino IDE */
 #include <WiFi.h>  /* Installed in default arduino IDE */
 
 /* Install from https://github.com/knolleary/pubsubclient/releases/latest */
@@ -32,10 +32,10 @@
 /* These defintions must be changed for each device
  * See https://software.intel.com/en-us/articles/connecting-to-ibm-bluemix-internet-of-things-using-mqtt 
  * for instructions on how they need to be defined */
-#define MQTT_CLIENTID "d:quickstart:iotsample-arduino:78c40e01d2fe"
-#define MQTT_SERVER "quickstart.messaging.internetofthings.ibmcloud.com"
-#define MQTT_PASSWORD "KOJLuhiugb#76jhAGf"
-#define DEVICE_ID "78c40e01d2fe"  /* not really used seprately in the MQTT comm */
+#define MQTT_CLIENTID "<USE PROVIDED ID>"
+#define MQTT_SERVER "<USE PROVIDED SERVER NAME>"
+#define MQTT_PASSWORD "<USE PROVIDED TOKEN>"
+#define DEVICE_ID "<USE DEVICE PROVIDED ID>"  /* not really used seprately in the MQTT comm */
 
 /* Functions to help the structure of the code in setup() and loop() */
 void callback(char* topic, byte* payload, unsigned int length);
@@ -44,18 +44,21 @@ double getSensorValue(void);
 int connectToNetwork(void);  /* Function dealing with the connection to Wifi or ethernet */
 
 /* Update these global variables with values suitable for your network. */
-//byte mac[] = { 0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x03 };  /* Not used */
-char ssid[] = "iot";	/* the name of the wifi network */
+byte mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }; /* The MAC address of the NIC */
+char ssid[] = "<INSERT SSID HERE>";	/* The name of the wifi network */
+byte ip[] = {192, 168, 0, 1}; /* Static address retrieved from IPAM. */
 //char passwd[] = "Please!"
 
 /* Global variables and instances used in multiple functions */
 int status = WL_IDLE_STATUS;	/* the wifi radio's status */
 
-WiFiClient wclient;	/* construct a wifi client based on WiFi.h */
-PubSubClient client(wclient);	/* construct the object for the MQTT client based on PubSubClient.h */
+/* Use this for wifi */
+//WiFiClient wclient;	/* construct a wifi client based on WiFi.h */
+//PubSubClient client(wclient);	/* construct the object for the MQTT client based on PubSubClient.h */
 
-//EthernetClient ethClient;	/* construct a ethernet client */
-//PubSubClient client(ethClient);
+/* Use this for ethernet */
+EthernetClient ethClient;	/* construct a ethernet client */
+PubSubClient client(ethClient); 
 
 
 void setup() 
@@ -67,9 +70,16 @@ void setup()
     {
       ; /* wait for the port to connect. Needed only for Leonardo according to Arduino */
     }
+    Serial.println("Booting up");
   }
   
-	connectToNetwork();	/* connect to the wifi SSID network */
+	//connectToNetwork();	/* connect to the wifi SSID network */
+  connectToEthernet();
+  
+  if (TERMINAL)
+  {
+    Serial.println("Ready to set MQTT server settings");
+  }
 	
   client.setServer(MQTT_SERVER, MQTT_PORT); /* Setting MQTT server details */
   client.setCallback(callback); /* Set callback function for subscription from MQTT broker*/
@@ -83,7 +93,7 @@ void loop()
   StaticJsonBuffer<200> jsonBuffer;	/* Reserve memory space for the Json buffer */
   JsonObject& payload = jsonBuffer.createObject();  /*create the payload object */
   JsonObject& data = payload.createNestedObject("d");  /* Bluemix has all data as a singe tuple {d:data} */
-  data["myName"] = "Arduino Uno";  /* 1st data item */
+  data["myName"] = "<INSERT NAME HERE>";  /* 1st data item */
   data["temperature"] = double_with_n_digits(getSensorValue(), 2); /* 2nd data item */
   payload.printTo(buffer, sizeof(buffer));	/* convert to buffer, which is the string to be used as the message */
 
@@ -134,6 +144,40 @@ double getSensorValue(void)
   
   t = 20.0 + (random(50)/10.0);
   return (t);
+}
+
+is
+int connectToEthernet()
+/*
+ * This method tries to connect to an Ethernet network using DHCP.
+ */
+{
+  int success = false;
+
+  if (TERMINAL)
+  {
+    Serial.println("Connecting to network");
+  }
+
+  if (Ethernet.begin(mac) == 0) // Try to use DHCP
+  {
+    // If that failed, use static address
+    Ethernet.begin(mac, ip);
+  }
+
+  if (TERMINAL)
+  {
+    Serial.print("Connected as ");
+    for (byte thisByte = 0; thisByte < 4; thisByte++)
+    {
+      // print the value of each byte of the IP address:
+      Serial.print(Ethernet.localIP()[thisByte], DEC);
+      Serial.print("."); 
+    }
+    Serial.println();
+  }
+
+  return success;
 }
 
 
